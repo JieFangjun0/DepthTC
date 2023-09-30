@@ -1,0 +1,112 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: without args",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: evaluate_WarpError_adap",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "-task",
+                "WCT/brick",
+                "-method",
+                "AdapTC_net1_W3/epoch_19",
+                "-dataset",
+                "LDV2",
+            ]
+        },
+        {
+            "name": "Python: evaluate_LPIPS_adap",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "-task",
+                "WCT/brick",
+                "-method",
+                "AdapTC_net1_W3/epoch_19",
+                "-dataset",
+                "LDV2",
+            ]
+        },
+        {
+            "name": "Python: test adap",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "-task",
+                "WCT/brick",
+                "-method",
+                "AdapTC_net1_W3",
+                "-epoch",
+                "25",
+                "-dataset",
+                "LDV2",
+            ]
+        },
+        {
+            "name": "Python: evaluate_LPIPS",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "-task",
+                "WCT/brick",
+                "-method",
+                "net_wct_W2/epoch_18",
+                "-dataset",
+                "LDV2",
+            ]
+        },
+        {
+            "name": "Python: evaluate_WarpError",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "-task",
+                "WCT/brick",
+                "-method",
+                "net_wct_W2/epoch_18",
+                "-dataset",
+                "LDV2",
+            ]
+        },
+        {
+            "name": "Python: train_adap.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "-model_name",
+                "AdapTC_net1_W3",
+                "-datasets_tasks",
+                "W3"
+            ]
+        }
+    ]
+}
