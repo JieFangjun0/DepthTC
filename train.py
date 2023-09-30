@@ -59,7 +59,7 @@ if __name__ == "__main__":
     parser.add_argument('-beta1',           type=float,   default=0.9,              help='beta1 for ADAM')
     parser.add_argument('-beta2',           type=float,   default=0.999,            help='beta2 for ADAM')
     parser.add_argument('-weight_decay',    type=float,   default=0,                help='weight decay')
-    parser.add_argument('-batch_size',      type=int,     default=2,                help='training batch size') #default 4
+    parser.add_argument('-batch_size',      type=int,     default=8,                help='training batch size') #default 4
     parser.add_argument('-train_epoch_size',type=int,     default=2000,             help='train epoch size') #default 1000
     parser.add_argument('-valid_epoch_size',type=int,     default=100,              help='valid epoch size')
     parser.add_argument('-epoch_max',       type=int,     default=100 ,             help='max #epochs') #default:100
@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     ### other options
     parser.add_argument('-seed',            type=int,     default=20020129,             help='random seed to use')
-    parser.add_argument('-threads',         type=int,     default=5,                help='number of threads for data loader to use')
+    parser.add_argument('-threads',         type=int,     default=8,                help='number of threads for data loader to use')
     parser.add_argument('-suffix',          type=str,     default='',               help='name suffix')
     parser.add_argument('-gpu',             type=int,     default=0,                help='gpu device id')
     parser.add_argument('-cpu',             action='store_true',                    help='use cpu?')
