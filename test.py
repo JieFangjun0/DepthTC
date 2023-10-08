@@ -18,19 +18,17 @@ import utils
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Fast Blind Video Temporal Consistency')
+    parser = argparse.ArgumentParser(description='Depth Video Temporal Consistency')
 
     ### model options
     parser.add_argument('-method',          type=str,     required=True,            help='test model name')
     parser.add_argument('-epoch',           type=int,     required=True,            help='epoch')
 
     ### dataset options
-    parser.add_argument('-dataset',         type=str,     required=True,            help='dataset to test')
     parser.add_argument('-phase',           type=str,     default="test",           choices=["train", "test"])
     parser.add_argument('-data_dir',        type=str,     default='data',           help='path to data folder')
     parser.add_argument('-list_dir',        type=str,     default='lists',          help='path to list folder')
     parser.add_argument('-checkpoint_dir',  type=str,     default='checkpoints',    help='path to checkpoint folder')
-    parser.add_argument('-task',            type=str,     required=True,            help='evaluated task')
     parser.add_argument('-redo',            action="store_true",                    help='Re-generate results')
 
     ### other options
@@ -56,7 +54,7 @@ if __name__ == "__main__":
 
     ### initialize model
     print('===> Initializing model from %s...' %model_opts.model)
-    model = networks.__dict__[model_opts.model](model_opts, nc_in=12, nc_out=3)
+    model = networks.__dict__[model_opts.model](model_opts, nc_in=2, nc_out=1)
 
 
     ### load trained model
@@ -73,11 +71,8 @@ if __name__ == "__main__":
 
 
     ### load video list
-    list_filename = os.path.join(opts.list_dir, "%s_%s.txt" %(opts.dataset, opts.phase))
-    with open(list_filename) as f:
-        video_list = [line.rstrip() for line in f.readlines()]
-
-
+    video_list=os.listdir(os.path.join(opts.data_dir, opts.phase, "MIDAS"))
+    video_list.sort()
     times = []
 
     ### start testing
@@ -85,41 +80,36 @@ if __name__ == "__main__":
 
         video = video_list[v]
 
-        print("Test %s on %s-%s video %d/%d: %s" %(opts.task, opts.dataset, opts.phase, v + 1, len(video_list), video))
+        print("Test video %d/%d: %s" %( v + 1, len(video_list), video))
 
         ## setup path
-        input_dir = os.path.join(opts.data_dir, opts.phase, "input", opts.dataset, video)
-        process_dir = os.path.join(opts.data_dir, opts.phase, "processed", opts.task, opts.dataset, video)
-        output_dir = os.path.join(opts.data_dir, opts.phase, "output", opts.method, "epoch_%d" %opts.epoch, opts.task, opts.dataset, video)
+        input_dir = os.path.join(opts.data_dir, opts.phase, "MIDAS", video)
+        GT_dir = os.path.join(opts.data_dir, opts.phase,"GT" , video)
+        output_dir = os.path.join(opts.data_dir, opts.phase, "output",opts.method, "epoch_%d" %opts.epoch, video)
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
             
 
-        frame_list = glob.glob(os.path.join(input_dir, "*.jpg"))
-        output_list = glob.glob(os.path.join(output_dir, "*.jpg"))
+        frame_list = glob.glob(os.path.join(input_dir, "*.png"))
+        output_list = glob.glob(os.path.join(output_dir, "*.png"))
 
         if len(frame_list) == len(output_list) and not opts.redo:
-            utils.make_video(f'{input_dir}','%5d.jpg',os.path.join(output_dir,f'input_video_{v}.mp4'))
-            utils.make_video(f'{process_dir}','%5d.jpg',os.path.join(output_dir,f'process_video_{v}.mp4'))
-            utils.make_video(f'{output_dir}','%5d.jpg',os.path.join(output_dir,f'TC_video_{v}.mp4'))
             print("Output frames exist, skip...")
             continue
 
 
         ## frame 0
-        frame_p1 = utils.read_img(os.path.join(process_dir, "00001.jpg"))
-        output_filename = os.path.join(output_dir, "00001.jpg")
+        frame_p1 = utils.read_img(os.path.join(input_dir, "0-dpt_swin2_large_384.png"))
+        output_filename = os.path.join(output_dir, "0.png")
         utils.save_img(frame_p1, output_filename)
 
         lstm_state = None
 
-        for t in range(2, len(frame_list)+1):
+        for t in range(1, len(frame_list)):
                 
             ### load frames
-            frame_i1 = utils.read_img(os.path.join(input_dir, "%05d.jpg" %(t - 1)))
-            frame_i2 = utils.read_img(os.path.join(input_dir, "%05d.jpg" %(t)))
-            frame_o1 = utils.read_img(os.path.join(output_dir, "%05d.jpg" %(t - 1)))
-            frame_p2 = utils.read_img(os.path.join(process_dir, "%05d.jpg" %(t)))
+            frame_o1 = utils.read_img(os.path.join(output_dir, f"{str(t-1)}.png"),grayscale=True)
+            frame_p2 = utils.read_img(os.path.join(input_dir, f"{str(t)}-dpt_swin2_large_384.png"),grayscale=True)
             
             ### resize image
             H_orig = frame_p2.shape[0]
@@ -128,22 +118,19 @@ if __name__ == "__main__":
             H_sc = int(math.ceil(float(H_orig) / opts.size_multiplier) * opts.size_multiplier)
             W_sc = int(math.ceil(float(W_orig) / opts.size_multiplier) * opts.size_multiplier)
                 
-            frame_i1 = cv2.resize(frame_i1, (W_sc, H_sc))
-            frame_i2 = cv2.resize(frame_i2, (W_sc, H_sc))
             frame_o1 = cv2.resize(frame_o1, (W_sc, H_sc))
             frame_p2 = cv2.resize(frame_p2, (W_sc, H_sc))
-
+            frame_o1=np.expand_dims(frame_o1,2)
+            frame_p2=np.expand_dims(frame_p2,2)
             
             with torch.no_grad():
 
                 ### convert to tensor
-                frame_i1 = utils.img2tensor(frame_i1).to(device)
-                frame_i2 = utils.img2tensor(frame_i2).to(device)
                 frame_o1 = utils.img2tensor(frame_o1).to(device)
                 frame_p2 = utils.img2tensor(frame_p2).to(device)
                 
                 ### model input
-                inputs = torch.cat((frame_p2, frame_o1, frame_i2, frame_i1), dim=1)
+                inputs = torch.cat((frame_p2, frame_o1), dim=1)
                 
                 ### forward
                 ts = time.time()
@@ -165,13 +152,13 @@ if __name__ == "__main__":
             frame_o2 = cv2.resize(frame_o2, (W_orig, H_orig))
             
             ### save output frame
-            output_filename = os.path.join(output_dir, "%05d.jpg" %(t))
+            output_filename = os.path.join(output_dir, f"{str(t)}.png")
             utils.save_img(frame_o2, output_filename)
                     
         ## end of frame
-        utils.make_video(f'{input_dir}','%5d.jpg',os.path.join(output_dir,f'input_video_{v}.mp4'))
-        utils.make_video(f'{process_dir}','%5d.jpg',os.path.join(output_dir,f'process_video_{v}.mp4'))
-        utils.make_video(f'{output_dir}','%5d.jpg',os.path.join(output_dir,f'TC_video_{v}.mp4')) 
+        utils.make_video(f'{input_dir}','%1d.png',os.path.join(output_dir,f'input_video_{v}.mp4'))
+        utils.make_video(f'{GT_dir}','%1d.png',os.path.join(output_dir,f'GT_video_{v}.mp4'))
+        utils.make_video(f'{output_dir}','%1d.png',os.path.join(output_dir,f'TC_video_{v}.mp4')) 
     ## end of video
     
     if len(times) > 0:
