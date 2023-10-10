@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
 
         ## frame 0
-        frame_p1 = utils.read_img(os.path.join(input_dir, "0-dpt_swin2_large_384.png"))
+        frame_p1 = utils.read_img(os.path.join(input_dir, "0-dpt_swin2_large_384.png"),grayscale=True)
         output_filename = os.path.join(output_dir, "0.png")
         utils.save_img(frame_p1, output_filename)
 
@@ -156,9 +156,9 @@ if __name__ == "__main__":
             utils.save_img(frame_o2, output_filename)
                     
         ## end of frame
-        utils.make_video(f'{input_dir}','%1d.png',os.path.join(output_dir,f'input_video_{v}.mp4'))
-        utils.make_video(f'{GT_dir}','%1d.png',os.path.join(output_dir,f'GT_video_{v}.mp4'))
-        utils.make_video(f'{output_dir}','%1d.png',os.path.join(output_dir,f'TC_video_{v}.mp4')) 
+        utils.make_video(f'{input_dir}','%d-dpt_swin2_large_384.png',os.path.join(output_dir,f'input_video.mp4'),fps=2)
+        utils.make_video(f'{GT_dir}','%d.png',os.path.join(output_dir,f'GT_video.mp4'),fps=2)
+        utils.make_video(f'{output_dir}','%d.png',os.path.join(output_dir,f'TC_video.mp4'),fps=2) 
     ## end of video
     
     if len(times) > 0:

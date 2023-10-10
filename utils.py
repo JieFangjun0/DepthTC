@@ -237,9 +237,9 @@ def save_img(img, filename):
     if img.ndim == 3:
         img = img[:, :, ::-1] ### RGB to BGR
     
-    ## clip to [0, 1]
-    img = np.clip(img, 0, 1)
-
+    ## clip to [-1, 2]
+    img = np.clip(img, -0.5, 1.5)
+    img=(img-img.min())/(img.max()-img.min())
     ## quantize to [0, 255]
     img = np.uint8(img * 255.0)
 
@@ -563,7 +563,7 @@ def run_cmd(cmd):
 
 def make_video(input_dir, img_fmt, video_filename, fps=24):
 
-    cmd = "ffmpeg -y -loglevel error -framerate %s -i %s/%s -vf \"scale=trunc(iw/2)*2:trunc(ih/2)*2\" -b 2M %s" \
+    cmd = "ffmpeg -y -loglevel error -framerate %s -i %s/%s -c:v libx264 -vf \"pad=ceil(iw/2)*2:ceil(ih/2)*2\" -pix_fmt yuv420p %s" \
             %(fps, input_dir, img_fmt, video_filename)
 
     run_cmd(cmd)

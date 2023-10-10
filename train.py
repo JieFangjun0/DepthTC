@@ -12,8 +12,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from tensorboardX import SummaryWriter
-
+# from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 ### custom lib
 #from networks.resample2d_package.modules.resample2d import Resample2d
 from pwc import Resample2d
@@ -23,10 +23,10 @@ import utils
 from loguru import logger
 
 
-
+#python train.py -model_name DepthTC_nf32_b5_ST0_LT0_PP100_MMN1 -w_ST 0 -w_LT 0 -w_PP 0 -w_MMN 100 -gpu 0
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Adaptive Video Temporal Consistency")
+    parser = argparse.ArgumentParser(description="Depth Video Temporal Consistency")
 
     ### model options
     parser.add_argument('-model',           type=str,     default="TransformNet",   help='TransformNet') 
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     parser.add_argument('-data_dir',        type=str,     default='data',           help='path to data folder')
     parser.add_argument('-list_dir',        type=str,     default='lists',          help='path to lists folder')
     parser.add_argument('-checkpoint_dir',  type=str,     default='checkpoints',    help='path to checkpoint folder')
-    parser.add_argument('-crop_size',       type=int,     default=192,              help='patch size')  #default 192
+    parser.add_argument('-crop_size',       type=int,     default=256,              help='patch size')  #default 192
     parser.add_argument('-geometry_aug',    type=int,     default=1,                help='geometry augmentation (rotation, scaling, flipping)')
     parser.add_argument('-order_aug',       type=int,     default=1,                help='temporal ordering augmentation')
     parser.add_argument('-scale_min',       type=float,   default=0.5,              help='min scaling factor')
@@ -49,20 +49,20 @@ if __name__ == "__main__":
     ### loss options
     parser.add_argument('-alpha',           type=float,   default=50,             help='alpha for computing visibility mask')
     parser.add_argument('-loss',            type=str,     default="L1",             help="optimizer [Options: SGD, ADAM]")
-    parser.add_argument('-w_ST',            type=float,   default=100,              help='weight for short-term temporal loss')
-    parser.add_argument('-w_LT',            type=float,   default=100,              help='weight for long-term temporal loss')
-    parser.add_argument('-w_PP',           type=float,   default=100,                help='weight for ping-pang loss')
-    parser.add_argument('-w_MMN',            type=float,    default=5,                help='weight for MMN loss')
+    parser.add_argument('-w_ST',            type=float,   default=0,              help='weight for short-term temporal loss')
+    parser.add_argument('-w_LT',            type=float,   default=0,              help='weight for long-term temporal loss')
+    parser.add_argument('-w_PP',           type=float,   default=0,                help='weight for ping-pang loss')
+    parser.add_argument('-w_MMN',            type=float,    default=1,                help='weight for MMN loss')
     ### training options
     parser.add_argument('-solver',          type=str,     default="ADAM",           choices=["SGD", "ADAIM"],   help="optimizer")
     parser.add_argument('-momentum',        type=float,   default=0.9,              help='momentum for SGD')
     parser.add_argument('-beta1',           type=float,   default=0.9,              help='beta1 for ADAM')
     parser.add_argument('-beta2',           type=float,   default=0.999,            help='beta2 for ADAM')
     parser.add_argument('-weight_decay',    type=float,   default=0,                help='weight decay')
-    parser.add_argument('-batch_size',      type=int,     default=8,                help='training batch size') #default 4
-    parser.add_argument('-train_epoch_size',type=int,     default=2000,             help='train epoch size') #default 1000
+    parser.add_argument('-batch_size',      type=int,     default=4,                help='training batch size') #default 4
+    parser.add_argument('-train_epoch_size',type=int,     default=4754,             help='train epoch size') #default 1000
     parser.add_argument('-valid_epoch_size',type=int,     default=100,              help='valid epoch size')
-    parser.add_argument('-epoch_max',       type=int,     default=100 ,             help='max #epochs') #default:100
+    parser.add_argument('-epoch_max',       type=int,     default=500 ,             help='max #epochs') #default:100
 
 
     ### learning rate options
@@ -75,9 +75,9 @@ if __name__ == "__main__":
 
     ### other options
     parser.add_argument('-seed',            type=int,     default=20020129,             help='random seed to use')
-    parser.add_argument('-threads',         type=int,     default=8,                help='number of threads for data loader to use')
+    parser.add_argument('-threads',         type=int,     default=4,                help='number of threads for data loader to use')
     parser.add_argument('-suffix',          type=str,     default='',               help='name suffix')
-    parser.add_argument('-gpu',             type=int,     default=0,                help='gpu device id')
+    parser.add_argument('-gpu',             type=int,     default=1,                help='gpu device id')
     parser.add_argument('-cpu',             action='store_true',                    help='use cpu?')
     
     opts = parser.parse_args()
@@ -105,17 +105,19 @@ if __name__ == "__main__":
         torch.cuda.manual_seed(opts.seed)
 
 
+
     ### model saving directory
     opts.model_dir = os.path.join(opts.checkpoint_dir, opts.model_name)
-    print("========================================================")
-    print("===> Save model to %s" %opts.model_dir)
-    print("========================================================")
+    logger.info("========================================================")
+    logger.info("===> Save model to %s" %opts.model_dir)
+    logger.info("========================================================")
     if not os.path.isdir(opts.model_dir):
         os.makedirs(opts.model_dir)
+    logger.add(os.path.join(opts.model_dir,"logger.log"))
 
     
     ### initialize model
-    print('===> Initializing model from %s...' %opts.model)
+    logger.info('===> Initializing model from %s...' %opts.model)
     model = networks.__dict__[opts.model](opts, nc_in=2, nc_out=1)
     model.train()
     ### initialize optimizer
@@ -124,7 +126,7 @@ if __name__ == "__main__":
     elif opts.solver == 'ADAM':
         optimizer = optim.Adam(model.parameters(), lr=opts.lr_init, weight_decay=opts.weight_decay, betas=(opts.beta1, opts.beta2))
     else:
-        raise Exception("Not supported solver (%s)" %opts.solver)
+        logger.exception("Not supported solver (%s)" %opts.solver)
     
 
     ### resume latest model
@@ -143,7 +145,7 @@ if __name__ == "__main__":
     if epoch_st > 0:
 
         print('=====================================================================')
-        print('===> Resuming model from epoch %d' %epoch_st)
+        logger.info('===> Resuming model from epoch %d' %epoch_st)
         print('=====================================================================')
 
         ### resume latest model and solver
@@ -159,7 +161,7 @@ if __name__ == "__main__":
     num_params = utils.count_network_parameters(model)
 
     print('\n=====================================================================')
-    print("===> Model has %d parameters" %num_params)
+    logger.info("===> Model has %d parameters" %num_params)
     print('=====================================================================')
 
 
@@ -171,11 +173,11 @@ if __name__ == "__main__":
     ### load pwcnet instead flownet
     import pwc
     FlowNet=pwc.Flownet(requires_grad=False)
-    print("===> Load pwc-net")
+    logger.info("===> Load pwc-net")
     
     ### convert to GPU
-    device = torch.device("cuda" if opts.cuda else "cpu")
-
+    device = torch.device("cuda:"+str(opts.gpu) if opts.cuda else "cpu")
+    torch.cuda.set_device(opts.gpu)
     model = model.to(device)
     FlowNet = FlowNet.to(device)
     
@@ -185,7 +187,10 @@ if __name__ == "__main__":
     ### create dataset
     train_dataset = datasets.MultiFramesDataset(opts, "train")
 
-    
+    def norm(x):
+        mean=x.mean(dim=[2,3],keepdim=True)
+        std=x.std(dim=[2,3],keepdim=True)
+        return (x-mean)/(std+1e-8)
     ### start training
     while model.epoch < opts.epoch_max:
 
@@ -211,7 +216,7 @@ if __name__ == "__main__":
         elif opts.loss == 'L1':
             criterion = nn.L1Loss(size_average=True)
         else:
-            raise Exception("Unsupported criterion %s" %opts.loss)
+            logger.exception("Unsupported criterion %s" %opts.loss)
         
         
         ### start epoch
@@ -328,8 +333,10 @@ if __name__ == "__main__":
             ###MMN loss
             if opts.w_MMN > 0:
                 for t in range(2*opts.sample_frames-1):
-                    depth=frame_d[t]
+                    depth=frame_o[t]
                     gt=frame_gt[t]
+                    depth=norm(depth)
+                    gt=norm(gt)
                     MMN_loss+=opts.w_MMN*criterion(depth,gt)
 
 
@@ -338,7 +345,6 @@ if __name__ == "__main__":
         
             overall_loss = ST_loss + LT_loss + PP_loss + MMN_loss
 
-            # logger.debug(f"loss_grad:{overall_loss.requires_grad}")
             
             ### backward loss
             overall_loss.backward()
@@ -351,6 +357,7 @@ if __name__ == "__main__":
             ### print training info
             info = "[GPU %d]: " %(opts.gpu)
             info += "Epoch %d; Batch %d / %d; " %(model.epoch, iteration, len(data_loader))
+            info += f" total_iter:{total_iter}; "
             info += "lr = %s; " %(str(current_lr))
 
             ## number of samples per second
@@ -377,11 +384,12 @@ if __name__ == "__main__":
             loss_writer.add_scalar('Overall_loss', overall_loss.item(), total_iter)
             info += "\t\t%25s = %f\n" %("Overall_loss", overall_loss.item())
 
-            print(info)
+            logger.info(info)
 
         ### end of epoch
 
         ### save model
+        logger.debug(f"save model epoch:{model.epoch},total iter:{total_iter}")
         utils.save_model(model, optimizer, opts)
 
 
