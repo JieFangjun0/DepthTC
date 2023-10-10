@@ -18,7 +18,7 @@ import utils
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Fast Blind Video Temporal Consistency')
+    parser = argparse.ArgumentParser(description='Depth Video Temporal Consistency')
 
     ### dataset options
     parser.add_argument('-dataset',         type=str,     required=True,            help='dataset to test')
